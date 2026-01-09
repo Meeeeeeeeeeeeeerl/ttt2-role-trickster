@@ -1,11 +1,11 @@
 if SERVER then
     AddCSLuaFile()
-	resource.AddFile("materials/vgui/ttt/dynamic/roles/icon_deceiver.vmt")
+	resource.AddFile("materials/vgui/ttt/dynamic/roles/icon_trick.vmt")
 end
 
 function ROLE:PreInitialize()
     self.color = Color(170, 30, 30)
-    self.abbr  = "deceiv"
+    self.abbr  = "trick"
 
     self.defaultTeam = TEAM_TRAITOR
 	self.surviveBonus               = 0
@@ -36,10 +36,10 @@ function ROLE:Initialize()
 end
 
 -- Make corpse appear innocent and fake team
-hook.Add("TTT2PostPlayerDeath", "DeceiverFakeCorpse", function(ply)
-    if not IsValid(ply) or ply:GetSubRole() ~= ROLE_DECEIVER then return end
+hook.Add("TTT2PostPlayerDeath", "TricksterFakeCorpse", function(player)
+    if not IsValid(player) or player:GetSubRole() ~= ROLE_TRICKSTER then return end
 
-    local corpse = ply.server_ragdoll
+    local corpse = player.server_ragdoll
     if not IsValid(corpse) then return end
 
     -- Fake role for body search
@@ -48,5 +48,5 @@ hook.Add("TTT2PostPlayerDeath", "DeceiverFakeCorpse", function(ply)
     corpse.was_team = TEAM_INNOCENT
     corpse.role_color = Color(80, 173, 59, 255)
     CORPSE.SetCredits(corpse, 0)
-    ply:SetRole(ROLE_INNOCENT)
+    player:SetRole(ROLE_INNOCENT)
 end)
