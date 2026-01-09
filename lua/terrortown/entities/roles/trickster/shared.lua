@@ -35,18 +35,49 @@ function ROLE:Initialize()
 	roles.SetBaseRole(self, ROLE_TRAITOR)
 end
 
--- Make corpse appear innocent and fake team
-hook.Add("TTT2PostPlayerDeath", "TricksterFakeCorpse", function(player)
-    if not IsValid(player) or player:GetSubRole() ~= ROLE_TRICKSTER then return end
+local deadTricksters = {}
+local function RevertDeadTricksters()
+	for index, player in ipairs(deadTricksters) do
+		if IsValid(player) and player:GetSubRole() == ROLE_INNOCENT and player:Alive() then
+			player:SetRole(ROLE_TRICKSTER)
+		end
+	end
+	deadTricksters = {}
+end
 
-    local corpse = player.server_ragdoll
-    if not IsValid(corpse) then return end
+if SERVER then
+	-- Make corpse appear innocent and fake team
+	hook.Add("TTT2PostPlayerDeath", "TricksterFakeCorpse", function(player)
+		if not IsValid(player) or player:GetSubRole() ~= ROLE_TRICKSTER then return end
 
-    -- Fake role for body search
-    corpse.was_role = ROLE_INNOCENT
-    corpse.confirmed = false
-    corpse.was_team = TEAM_INNOCENT
-    corpse.role_color = Color(80, 173, 59, 255)
-    CORPSE.SetCredits(corpse, 0)
-    player:SetRole(ROLE_INNOCENT)
-end)
+		local corpse = player.server_ragdoll
+		if not IsValid(corpse) then return end
+
+		-- Fake role for body search
+		corpse.was_role = ROLE_INNOCENT
+		corpse.confirmed = false
+		corpse.was_team = TEAM_INNOCENT
+		corpse.role_color = Color(80, 173, 59, 255)
+		CORPSE.SetCredits(corpse, 0)
+		player:SetRole(ROLE_INNOCENT)
+		deadTricksters.insert(player)
+	end)
+
+	hook.Add("PlayerDisconnected", "TricksterCleanupDisconnect", function(player)
+        if not IsValid(player) then return end
+        for index, deadTrickster in ipairs(deadTricksters) do
+			if deadTrickster == player then
+				table.remove(deadTricksters, index)
+				break
+			end
+		end
+    end)
+
+	hook.Add("TTTEndRound", "TricksterCleanupRoundEnd", function(result)
+		RevertDeadTricksters()
+	end)
+
+	hook.Add("TTTBeginRound", "TricksterCleanupRoundStart", function()
+		deadTricksters = {}
+	end)
+end
