@@ -11,8 +11,8 @@ function ROLE:PreInitialize()
 	self.surviveBonus               = 0
 	self.scoreKillsMultiplier       = 1
 	self.scoreTeamKillsMultiplier   = -8
-	self.preventFindCredits         = true
-	self.preventKillCredits         = true
+	self.preventFindCredits         = false
+	self.preventKillCredits         = false
 	self.preventTraitorAloneCredits = false
 	self.preventWin                 = false
 	self.unknownTeam                = false
@@ -38,10 +38,12 @@ end
 local deadTricksters = {}
 local function RevertDeadTricksters()
 	for index, player in ipairs(deadTricksters) do
-		if IsValid(player) and player:GetSubRole() == ROLE_INNOCENT and player:Alive() then
+		if IsValid(player) and player:GetSubRole() == ROLE_INNOCENT and (not player:Alive()) then
 			player:SetRole(ROLE_TRICKSTER)
+			print("Returned role of " .. player:Nick())
 		end
 	end
+	SendFullStateUpdate()
 	deadTricksters = {}
 end
 
@@ -60,7 +62,7 @@ if SERVER then
 		corpse.role_color = Color(80, 173, 59, 255)
 		CORPSE.SetCredits(corpse, 0)
 		player:SetRole(ROLE_INNOCENT)
-		deadTricksters.insert(player)
+		table.insert(deadTricksters, player)
 	end)
 
 	hook.Add("PlayerDisconnected", "TricksterCleanupDisconnect", function(player)
@@ -73,7 +75,7 @@ if SERVER then
 		end
     end)
 
-	hook.Add("TTTEndRound", "TricksterCleanupRoundEnd", function(result)
+	hook.Add("TTT2PreEndRound", "TricksterCleanupRoundEnd", function(result, duration)
 		RevertDeadTricksters()
 	end)
 
