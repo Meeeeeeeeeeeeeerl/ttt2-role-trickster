@@ -4,7 +4,7 @@ if SERVER then
 end
 
 function ROLE:PreInitialize()
-    self.color = Color(170, 30, 30)
+    self.color = Color(214, 47, 21)
     self.abbr  = "trick"
 
     self.defaultTeam = TEAM_TRAITOR
