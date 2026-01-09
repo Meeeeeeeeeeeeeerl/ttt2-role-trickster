@@ -20,14 +20,16 @@ function ROLE:PreInitialize()
 	self.isOmniscientRole = true
 
     	self.conVarData = {
-		pct = 0.17, -- necessary: percentage of getting this role selected (per player)
-		maximum = 1, -- maximum amount of roles in a round
-		minPlayers = 6, -- minimum amount of players until this role is able to get selected
-		credits = 1, -- the starting credits of a specific role
-		togglable = true, -- option to toggle a role for a client if possible (F1 menu)
+		pct = 0.17,
+		maximum = 1,
+		minPlayers = 6,
+		credits = 1,
+		togglable = true,
+		creditsAwardKillEnable = 1,
+		creditsAwardDeadEnable = 1,
 		random = 30,
-		traitorButton = 1, -- can use traitor buttons
-		shopFallback = SHOP_FALLBACK_TRAITOR -- granting the role access to the shop
+		traitorButton = 1,
+		shopFallback = SHOP_FALLBACK_TRAITOR
 	}
 end
 
