@@ -40,7 +40,6 @@ local function RevertDeadTricksters()
 	for index, player in ipairs(deadTricksters) do
 		if IsValid(player) and player:GetSubRole() == ROLE_INNOCENT and (not player:Alive()) then
 			player:SetRole(ROLE_TRICKSTER)
-			print("Returned role of " .. player:Nick())
 		end
 	end
 	SendFullStateUpdate()
