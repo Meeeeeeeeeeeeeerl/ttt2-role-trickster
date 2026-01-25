@@ -37,21 +37,23 @@ function ROLE:Initialize()
 	roles.SetBaseRole(self, ROLE_TRAITOR)
 end
 
-local deadTricksters = {}
-local function RevertDeadTricksters()
-	for index, player in ipairs(deadTricksters) do
-		if IsValid(player) and player:GetSubRole() == ROLE_INNOCENT and (not player:Alive()) then
-			player:SetRole(ROLE_TRICKSTER)
-		end
-	end
-	SendFullStateUpdate()
-	deadTricksters = {}
+local tricksters = {}
+
+local function has_value (tab, val)
+    for _, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+    return false
 end
 
 if SERVER then
-	-- Make corpse appear innocent and fake team
-	hook.Add("TTT2PostPlayerDeath", "TricksterFakeCorpse", function(player)
+
+	hook.Add("TTT2PostPlayerDeath", "TricksterFakeTeamswitch", function(player)
 		if not IsValid(player) or player:GetSubRole() ~= ROLE_TRICKSTER then return end
+		player:SetRole(ROLE_INNOCENT)
+		print("set role to inno")
 
 		local corpse = player.server_ragdoll
 		if not IsValid(corpse) then return end
@@ -62,25 +64,47 @@ if SERVER then
 		corpse.was_team = TEAM_INNOCENT
 		corpse.role_color = Color(80, 173, 59, 255)
 		CORPSE.SetCredits(corpse, 0)
-		player:SetRole(ROLE_INNOCENT)
-		table.insert(deadTricksters, player)
+	end)
+
+	hook.Add("TTT2UpdateSubrole", "TricksterRoleChange", function(player, oldRole, newRole)
+		if not player:Alive() then return end
+		if oldRole == ROLE_TRICKSTER and newRole ~= ROLE_TRICKSTER then
+			player:SetRole(ROLE_TRICKSTER)
+		end
+		if newRole == ROLE_TRICKSTER and not has_value(tricksters, player) then
+			table.insert(tricksters, player)
+		end
+	end)
+
+	hook.Add("TTT2UpdateTeam", "TricksterTeamChange", function(player, _oldTeam, newTeam)
+		if player:GetSubRole() == ROLE_TRICKSTER and newTeam ~= TEAM_TERROR then
+			player:SetTeam(TEAM_TERROR)
+			SendFullStateUpdate()
+		end
 	end)
 
 	hook.Add("PlayerDisconnected", "TricksterCleanupDisconnect", function(player)
         if not IsValid(player) then return end
-        for index, deadTrickster in ipairs(deadTricksters) do
-			if deadTrickster == player then
-				table.remove(deadTricksters, index)
+        for index, trickster in ipairs(tricksters) do
+			if trickster == player then
+				table.remove(tricksters, index)
 				break
 			end
 		end
     end)
 
-	hook.Add("TTT2PreEndRound", "TricksterCleanupRoundEnd", function(result, duration)
-		RevertDeadTricksters()
+	hook.Add("TTT2PreEndRound", "TricksterPreRound", function(result, duration)
+		print("revert tricksters")
+		for _, player in ipairs(tricksters) do
+			if IsValid(player) then
+				player:SetRole(ROLE_TRICKSTER)
+				player:SetTeam(TEAM_TERROR)
+			end
+		end
+		SendFullStateUpdate()
 	end)
 
 	hook.Add("TTTBeginRound", "TricksterCleanupRoundStart", function()
-		deadTricksters = {}
+		tricksters = {}
 	end)
 end
