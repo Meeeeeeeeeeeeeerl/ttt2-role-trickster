@@ -53,16 +53,17 @@ if SERVER then
 	hook.Add("TTT2PostPlayerDeath", "TricksterFakeTeamswitch", function(player)
 		if not IsValid(player) or player:GetSubRole() ~= ROLE_TRICKSTER then return end
 		player:SetRole(ROLE_INNOCENT)
-		print("set role to inno")
 
 		local corpse = player.server_ragdoll
 		if not IsValid(corpse) then return end
 
 		-- Fake role for body search
+		player.role_color = TEAMS[TEAM_INNOCENT].color
 		corpse.was_role = ROLE_INNOCENT
 		corpse.confirmed = false
 		corpse.was_team = TEAM_INNOCENT
-		corpse.role_color = Color(80, 173, 59, 255)
+		corpse.role_color = TEAMS[TEAM_INNOCENT].color
+		corpse:SetNWBool("real_player_corpse", false)
 		CORPSE.SetCredits(corpse, 0)
 	end)
 
@@ -106,5 +107,10 @@ if SERVER then
 
 	hook.Add("TTTBeginRound", "TricksterCleanupRoundStart", function()
 		tricksters = {}
+	end)
+
+	hook.Add("TTT2ModifyLogicRoleCheck", "TricksterTestFaker", function(player, ent, activator, caller, data)
+		if not IsValid(player) or not player:IsActive() or player:GetSubRole() ~= ROLE_TRICKSTER then return end
+		return ROLE_INNOCENT, TEAM_INNOCENT
 	end)
 end
