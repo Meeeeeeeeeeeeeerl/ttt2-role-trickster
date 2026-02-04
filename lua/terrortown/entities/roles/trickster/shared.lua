@@ -14,6 +14,7 @@ function ROLE:PreInitialize()
 	self.preventFindCredits         = false
 	self.preventKillCredits         = false
 	self.preventTraitorAloneCredits = false
+	self.creditsAwardKillEnable = 1
 	self.preventWin                 = false
 	self.unknownTeam                = false
 	self.passive = true
@@ -37,80 +38,76 @@ function ROLE:Initialize()
 	roles.SetBaseRole(self, ROLE_TRAITOR)
 end
 
-local tricksters = {}
-
-local function has_value (tab, val)
-    for _, value in ipairs(tab) do
-        if value == val then
-            return true
-        end
-    end
-    return false
-end
+local preventedTeamAwardCredit = false
 
 if SERVER then
 
-	hook.Add("TTT2PostPlayerDeath", "TricksterFakeTeamswitch", function(player)
-		if not IsValid(player) or player:GetSubRole() ~= ROLE_TRICKSTER then return end
-		player:SetRole(ROLE_INNOCENT)
-
-		local corpse = player.server_ragdoll
-		if not IsValid(corpse) then return end
+	hook.Add("TTTOnCorpseCreated", "TricksterFakeTeamswitch", function(corpse, player)
+		if not IsValid(player) or player:GetSubRole() ~= ROLE_TRICKSTER or not IsValid(corpse) then return end
 
 		-- Fake role for body search
-		player.role_color = TEAMS[TEAM_INNOCENT].color
 		corpse.was_role = ROLE_INNOCENT
 		corpse.confirmed = false
 		corpse.was_team = TEAM_INNOCENT
 		corpse.role_color = TEAMS[TEAM_INNOCENT].color
-		corpse:SetNWBool("real_player_corpse", false)
+		corpse:SetNWBool("real_player_corpse", true)
 		CORPSE.SetCredits(corpse, 0)
 	end)
 
-	hook.Add("TTT2UpdateSubrole", "TricksterRoleChange", function(player, oldRole, newRole)
-		if not player:Alive() then return end
-		if oldRole == ROLE_TRICKSTER and newRole ~= ROLE_TRICKSTER then
-			player:SetRole(ROLE_TRICKSTER)
-		end
-		if newRole == ROLE_TRICKSTER and not has_value(tricksters, player) then
-			table.insert(tricksters, player)
-		end
-	end)
-
-	hook.Add("TTT2UpdateTeam", "TricksterTeamChange", function(player, _oldTeam, newTeam)
-		if player:GetSubRole() == ROLE_TRICKSTER and newTeam ~= TEAM_TERROR then
-			player:SetTeam(TEAM_TERROR)
-			SendFullStateUpdate()
-		end
-	end)
-
-	hook.Add("PlayerDisconnected", "TricksterCleanupDisconnect", function(player)
-        if not IsValid(player) then return end
-        for index, trickster in ipairs(tricksters) do
-			if trickster == player then
-				table.remove(tricksters, index)
-				break
-			end
-		end
-    end)
-
-	hook.Add("TTT2PreEndRound", "TricksterPreRound", function(result, duration)
-		print("revert tricksters")
-		for _, player in ipairs(tricksters) do
-			if IsValid(player) then
-				player:SetRole(ROLE_TRICKSTER)
-				player:SetTeam(TEAM_TERROR)
-			end
-		end
-		SendFullStateUpdate()
-	end)
-
-	hook.Add("TTTBeginRound", "TricksterCleanupRoundStart", function()
-		tricksters = {}
-	end)
-
-	hook.Add("TTT2ModifyLogicRoleCheck", "TricksterTestFaker", function(player, ent, activator, caller, data)
+	hook.Add("TTT2ModifyLogicRoleCheck", "TricksterTestFaker", function(player, _ent, _activator, _caller, _data)
 		if not IsValid(player) or not player:IsActive() or player:GetSubRole() ~= ROLE_TRICKSTER then return end
 		return ROLE_INNOCENT, TEAM_INNOCENT
 	end)
+
+	hook.Add("TTT2CheckCreditAward", "TricksterPreventKillCredit", function(victim, attacker)
+		if IsValid(victim) and victim:GetSubRole() == ROLE_TRICKSTER then
+			return false
+		end
+		return true
+	end)
 end
+
+hook.Add("TTTScoreboardRowColorForPlayer", "TricksterScoreboardRowColorFake", function(player)
+	if IsValid(player) and player:GetSubRole() == ROLE_TRICKSTER then
+		return TEAMS[TEAM_INNOCENT].color
+	end
+end)
+
+hook.Add("TTT2ModifyMiniscoreboardColor", "TricksterMiniScoreboardColorFake", function(player, _col)
+	if IsValid(player) and player:GetSubRole() == ROLE_TRICKSTER then
+		return TEAMS[TEAM_INNOCENT].color
+	end
+end)
+
+hook.Add("TTTRenderEntityInfo", "TricksterFakeIcon", function(tData)
+	local ent = tData:GetEntity()
+
+    if not IsValid(ent) or not ent:IsPlayerRagdoll() then return end
+	local player = CORPSE.GetPlayer(ent)
+	if not IsValid(player) or not CORPSE.GetFound(ent, false) or player:GetSubRole() ~= ROLE_TRICKSTER then return end
+	local roleData = roles.GetByIndex(ROLE_INNOCENT)
+
+	local _data, params = tData:GetRaw()
+
+	params.displayInfo.icon = {}
+
+    tData:AddIcon(
+        roleData.iconMaterial,
+        roleData.color
+    )
+end)
+
+hook.Add("TTTScoreboardColumns", "TricksterTeamIconOverride", function(row)
+    local oldUpdate = row.UpdatePlayerData
+    function row:UpdatePlayerData()
+        oldUpdate(self)
+        local ply = self.Player
+        if not IsValid(ply) or not ply:HasRole() then return end
+        if ply:GetSubRole() ~= ROLE_TRICKSTER then return end
+        local icon = TEAMS[TEAM_INNOCENT].iconMaterial:GetName()
+
+		self.team:SetTooltip(LANG.GetTranslation(TEAM_INNOCENT))
+        self.team:SetImage(icon)
+        self.team2:SetImage(icon)
+	end
+end)
