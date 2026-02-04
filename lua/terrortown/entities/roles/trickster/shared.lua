@@ -4,7 +4,7 @@ if SERVER then
 end
 
 function ROLE:PreInitialize()
-    self.color = Color(214, 47, 21)
+    self.color = Color(252, 3, 157)
     self.abbr  = "trick"
 
     self.defaultTeam = TEAM_TRAITOR
@@ -44,8 +44,6 @@ if SERVER then
 
 	hook.Add("TTTOnCorpseCreated", "TricksterFakeTeamswitch", function(corpse, player)
 		if not IsValid(player) or player:GetSubRole() ~= ROLE_TRICKSTER or not IsValid(corpse) then return end
-
-		-- Fake role for body search
 		corpse.was_role = ROLE_INNOCENT
 		corpse.confirmed = false
 		corpse.was_team = TEAM_INNOCENT
@@ -68,12 +66,18 @@ if SERVER then
 end
 
 hook.Add("TTTScoreboardRowColorForPlayer", "TricksterScoreboardRowColorFake", function(player)
+    local client = LocalPlayer()
+    if not IsValid(client) or not client:HasRole() then return end
+	if player:GetTeam() == client:GetTeam() then return end
 	if IsValid(player) and player:GetSubRole() == ROLE_TRICKSTER then
 		return TEAMS[TEAM_INNOCENT].color
 	end
 end)
 
 hook.Add("TTT2ModifyMiniscoreboardColor", "TricksterMiniScoreboardColorFake", function(player, _col)
+	local client = LocalPlayer()
+    if not IsValid(client) or not client:HasRole() then return end
+	if player:GetTeam() == client:GetTeam() then return end
 	if IsValid(player) and player:GetSubRole() == ROLE_TRICKSTER then
 		return TEAMS[TEAM_INNOCENT].color
 	end
@@ -99,15 +103,30 @@ end)
 
 hook.Add("TTTScoreboardColumns", "TricksterTeamIconOverride", function(row)
     local oldUpdate = row.UpdatePlayerData
+
     function row:UpdatePlayerData()
         oldUpdate(self)
+
         local ply = self.Player
+        local client = LocalPlayer()
+
         if not IsValid(ply) or not ply:HasRole() then return end
+        if not IsValid(client) or not client:HasRole() then return end
+
         if ply:GetSubRole() ~= ROLE_TRICKSTER then return end
+        if ply:GetTeam() == client:GetTeam() then return end
+
         local icon = TEAMS[TEAM_INNOCENT].iconMaterial:GetName()
 
-		self.team:SetTooltip(LANG.GetTranslation(TEAM_INNOCENT))
+        self.team:SetTooltip(LANG.GetTranslation(TEAM_INNOCENT))
         self.team:SetImage(icon)
         self.team2:SetImage(icon)
+    end
+end)
+
+
+hook.Add("TTT2UpdateSubrole", "DenyTricksterRoleChange", function(player, oldSubrole, newSubrole)
+	if oldSubrole == ROLE_TRICKSTER and newSubrole == ROLE_SIDEKICK then
+		player:SetRole(ROLE_TRICKSTER, TEAM_TRAITOR)
 	end
 end)
