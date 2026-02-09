@@ -8,3 +8,7 @@ L["target_" .. TRICKSTER.name] = "Trickser"
 L["ttt2_desc_" .. TRICKSTER.name] = "Der Trickser ist ein Verräter, der nach seinem Tod wie ein Unschuldiger aussieht."
 L["body_found_" .. TRICKSTER.abbr] = "Er war ein Trickser!"
 L["search_role_" .. TRICKSTER.abbr] = "Diese Person war ein Trickser!"
+
+L["label_trickster_refuse_team_lovers"] = "Kann nicht dem Team Liebe beitreten."
+L["label_trickster_refuse_sidekick"] = "Kann nicht zum Sidekick werden."
+L["label_trickster_test_as_innocent"] = "Erscheint im Tester als Unschuldiger."

@@ -4,7 +4,7 @@ if SERVER then
 end
 
 function ROLE:PreInitialize()
-    self.color = Color(252, 3, 157)
+    self.color = Color(240, 22, 17)
     self.abbr  = "trick"
 
     self.defaultTeam = TEAM_TRAITOR
@@ -38,8 +38,6 @@ function ROLE:Initialize()
 	roles.SetBaseRole(self, ROLE_TRAITOR)
 end
 
-local preventedTeamAwardCredit = false
-
 if SERVER then
 
 	hook.Add("TTTOnCorpseCreated", "TricksterFakeTeamswitch", function(corpse, player)
@@ -53,7 +51,7 @@ if SERVER then
 	end)
 
 	hook.Add("TTT2ModifyLogicRoleCheck", "TricksterTestFaker", function(player, _ent, _activator, _caller, _data)
-		if not IsValid(player) or not player:IsActive() or player:GetSubRole() ~= ROLE_TRICKSTER then return end
+		if not IsValid(player) or not player:IsActive() or player:GetSubRole() ~= ROLE_TRICKSTER and not GetConVar("ttt2_trickster_test_as_innocent"):GetBool() then return end
 		return ROLE_INNOCENT, TEAM_INNOCENT
 	end)
 
@@ -125,8 +123,39 @@ hook.Add("TTTScoreboardColumns", "TricksterTeamIconOverride", function(row)
 end)
 
 
-hook.Add("TTT2UpdateSubrole", "DenyTricksterRoleChange", function(player, oldSubrole, newSubrole)
-	if oldSubrole == ROLE_TRICKSTER and newSubrole == ROLE_SIDEKICK then
+hook.Add("TTT2UpdateSubrole", "DenyTricksterSidekick", function(player, oldSubrole, newSubrole)
+	if oldSubrole == ROLE_TRICKSTER and newSubrole == ROLE_SIDEKICK and GetConVar("ttt2_trickster_refuse_sidekick"):GetBool() then
 		player:SetRole(ROLE_TRICKSTER, TEAM_TRAITOR)
 	end
 end)
+
+hook.Add("TTT2UpdateTeam", "TricksterNoLove", function(player, _oldTeam, newTeam)
+	if player:GetSubRole() == ROLE_TRICKSTER and newTeam == TEAM_LOVER and player:Alive() and GetConVar("ttt2_trickster_refuse_team_lovers"):GetBool() then
+		player:SetTeam(TEAM_TERROR)
+		lovedones = net.ReadTable()
+		lovedones = {}
+		hook.Remove("EntityTakeDamage", "LoversDamageScaling")
+		hook.Remove("Tick", "Lovers_Heal_Share")
+	end
+end)
+
+if CLIENT then
+	function ROLE:AddToSettingsMenu(parent)
+		local form = vgui.CreateTTT2Form(parent, "header_roles_additional")
+
+		form:MakeCheckBox({
+			serverConvar = "ttt2_trickster_refuse_team_lovers",
+			label = "label_trickster_refuse_team_lovers"
+		})
+
+		form:MakeCheckBox({
+			serverConvar = "ttt2_trickster_refuse_sidekick",
+			label = "label_trickster_refuse_sidekick"
+		})
+
+		form:MakeCheckBox({
+			serverConvar = "ttt2_trickster_test_as_innocent",
+			label = "label_trickster_test_as_innocent"
+		})
+	end
+end
