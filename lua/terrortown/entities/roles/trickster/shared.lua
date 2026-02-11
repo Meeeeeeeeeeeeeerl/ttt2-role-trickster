@@ -126,16 +126,22 @@ end)
 hook.Add("TTT2UpdateSubrole", "DenyTricksterSidekick", function(player, oldSubrole, newSubrole)
 	if oldSubrole == ROLE_TRICKSTER and newSubrole == ROLE_SIDEKICK and GetConVar("ttt2_trickster_refuse_sidekick"):GetBool() then
 		player:SetRole(ROLE_TRICKSTER, TEAM_TRAITOR)
+		SendFullStateUpdate()
 	end
 end)
 
 hook.Add("TTT2UpdateTeam", "TricksterNoLove", function(player, _oldTeam, newTeam)
 	if player:GetSubRole() == ROLE_TRICKSTER and newTeam == TEAM_LOVER and player:Alive() and GetConVar("ttt2_trickster_refuse_team_lovers"):GetBool() then
-		player:SetTeam(TEAM_TERROR)
-		lovedones = net.ReadTable()
-		lovedones = {}
-		hook.Remove("EntityTakeDamage", "LoversDamageScaling")
-		hook.Remove("Tick", "Lovers_Heal_Share")
+		timer.Simple(1, function()
+			if lovedones then
+				LANG.Msg(player, "trickster_love_faded", nil, MSG_MSTACK_PLAIN)
+				lovedones = {}
+				player:SetRole(ROLE_TRICKSTER, TEAM_TRAITOR)
+				hook.Remove("EntityTakeDamage", "LoversDamageScaling")
+				hook.Remove("Tick", "Lovers_Heal_Share")
+				SendFullStateUpdate()
+			end
+		end)
 	end
 end)
 
